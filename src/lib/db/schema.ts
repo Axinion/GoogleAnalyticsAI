@@ -58,6 +58,8 @@ export const websites = pgTable("websites", {
   domain: varchar("domain", { length: 255 }).notNull().unique(),
   trackingId: varchar("tracking_id", { length: 50 }).notNull().unique(),
   description: text("description"),
+  timezone: varchar("timezone", { length: 100 }).default("UTC").notNull(),
+  localTracking: boolean("local_tracking").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

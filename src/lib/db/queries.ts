@@ -60,11 +60,10 @@ export async function getSessionsByWebsiteId(websiteId: string, limit: number = 
   });
 }
 
-export async function updateSession(
-  sessionId: string,
-  data: Partial<typeof sessions.$inferInsert>
-) {
-  return db.update(sessions).set(data).where(eq(sessions.id, sessionId)).returning();
+export async function getSessionBySessionId(sessionId: string) {
+  return db.query.sessions.findFirst({
+    where: eq(sessions.sessionId, sessionId),
+  });
 }
 
 // Page View queries

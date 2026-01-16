@@ -134,12 +134,23 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <WebsiteSelector
-                websites={websites}
-                selectedWebsiteId={selectedWebsiteId}
-                onWebsiteChange={setSelectedWebsiteId}
-                loading={loading}
-              />
+              <div className="flex items-center gap-4">
+                <WebsiteSelector
+                  websites={websites}
+                  selectedWebsiteId={selectedWebsiteId}
+                  onWebsiteChange={setSelectedWebsiteId}
+                  loading={loading}
+                />
+                <button
+                  onClick={() => router.push('/dashboard/add-website')}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add Website
+                </button>
+              </div>
               <DateRangePicker
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
