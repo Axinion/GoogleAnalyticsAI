@@ -77,14 +77,24 @@ export const sessions = pgTable("sessions", {
   userAgent: text("user_agent"),
   country: varchar("country", { length: 100 }),
   city: varchar("city", { length: 100 }),
+  region: varchar("region", { length: 100 }),
   device: varchar("device", { length: 50 }), // mobile, desktop, tablet
   browser: varchar("browser", { length: 100 }),
+  browserVersion: varchar("browser_version", { length: 50 }),
   os: varchar("os", { length: 100 }),
+  osVersion: varchar("os_version", { length: 50 }),
+  timezone: varchar("timezone", { length: 100 }),
+  language: varchar("language", { length: 10 }),
+  screenResolution: varchar("screen_resolution", { length: 20 }),
+  viewport: varchar("viewport", { length: 20 }),
   startTime: timestamp("start_time").defaultNow().notNull(),
   endTime: timestamp("end_time"),
   duration: integer("duration"), // in seconds
+  activeTime: integer("active_time"), // in seconds
   pageViews: integer("page_views").default(0).notNull(),
   isNewVisitor: boolean("is_new_visitor").default(true).notNull(),
+  isLiveUser: boolean("is_live_user").default(false).notNull(),
+  lastActivity: timestamp("last_activity"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -101,6 +111,23 @@ export const pageViews = pgTable("page_views", {
   title: varchar("title", { length: 500 }),
   referrer: varchar("referrer", { length: 500 }),
   duration: integer("duration"), // time spent on page in seconds
+  pageLoadTime: integer("page_load_time"), // in milliseconds
+  domReadyTime: integer("dom_ready_time"), // in milliseconds
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Events (for custom events, goals, errors, etc.)
+export const events = pgTable("events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  websiteId: uuid("website_id")
+    .notNull()
+    .references(() => websites.id, { onDelete: "cascade" }),
+  sessionId: uuid("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type", { length: 100 }).notNull(), // pageview, click, form_submit, error, etc.
+  eventData: json("event_data").$type<Record<string, any>>(), // Flexible data storage
   timestamp: timestamp("timestamp").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -118,6 +145,16 @@ export const analyticsSummary = pgTable("analytics_summary", {
   newVisitors: integer("new_visitors").default(0).notNull(),
   bounceRate: decimal("bounce_rate", { precision: 5, scale: 2 }).default("0"),
   avgSessionDuration: decimal("avg_session_duration", { precision: 10, scale: 2 }).default("0"),
+  avgTimeOnPage: integer("avg_time_on_page").default(0).notNull(),
+  uniquePages: integer("unique_pages").default(0).notNull(),
+  // JSON fields for detailed breakdowns
+  deviceBreakdown: json("device_breakdown").$type<Array<{device: string, count: number}>>(),
+  browserBreakdown: json("browser_breakdown").$type<Array<{browser: string, count: number}>>(),
+  osBreakdown: json("os_breakdown").$type<Array<{os: string, count: number}>>(),
+  countryBreakdown: json("country_breakdown").$type<Array<{country: string, count: number}>>(),
+  eventBreakdown: json("event_breakdown").$type<Array<{eventType: string, count: number}>>(),
+  topPages: json("top_pages").$type<Array<{path: string, title: string, views: number, avgTime: number}>>(),
+  topReferrers: json("top_referrers").$type<Array<{referrer: string, count: number}>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -195,6 +232,17 @@ export const analyticsSummaryRelations = relations(analyticsSummary, ({ one }) =
   website: one(websites, {
     fields: [analyticsSummary.websiteId],
     references: [websites.id],
+  }),
+}));
+
+export const eventsRelations = relations(events, ({ one }) => ({
+  website: one(websites, {
+    fields: [events.websiteId],
+    references: [websites.id],
+  }),
+  session: one(sessions, {
+    fields: [events.sessionId],
+    references: [sessions.id],
   }),
 }));
 
