@@ -8,6 +8,11 @@ import { MetricCard } from "@/components/MetricCard";
 import { WebsiteSelector } from "@/components/WebsiteSelector";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { TimePeriodToggle } from "@/components/TimePeriodToggle";
+import { BreakdownChart } from "@/components/BreakdownChart";
+import { TopItemsChart } from "@/components/TopItemsChart";
+import { GeographicData } from "@/components/GeographicData";
+import { ReferralSources } from "@/components/ReferralSources";
+import { TimeSeriesChart } from "@/components/TimeSeriesChart";
 
 interface Website {
   id: string;
@@ -15,11 +20,22 @@ interface Website {
   domain: string;
 }
 
-interface DashboardMetrics {
-  totalVisitors: number;
+interface EnhancedMetrics {
+  totalSessions: number;
   totalPageViews: number;
-  totalActiveTime: number;
+  totalVisitors: number;
+  newVisitors: number;
+  bounceRate: number;
+  avgSessionDuration: number;
   avgTimeOnPage: number;
+  uniquePages: number;
+  deviceBreakdown: Array<{ device: string; count: number }>;
+  browserBreakdown: Array<{ browser: string; count: number }>;
+  osBreakdown: Array<{ os: string; count: number }>;
+  countryBreakdown: Array<{ country: string; count: number }>;
+  eventBreakdown: Array<{ eventType: string; count: number }>;
+  topPages: Array<{ path: string; title?: string; views: number; avgTime?: number }>;
+  topReferrers: Array<{ referrer: string; count: number }>;
   liveUsers: number;
 }
 
@@ -30,7 +46,7 @@ export default function DashboardPage() {
 
   const [websites, setWebsites] = useState<Website[]>([]);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [metrics, setMetrics] = useState<EnhancedMetrics | null>(null);
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
     to: new Date(),
@@ -84,9 +100,10 @@ export default function DashboardPage() {
         websiteId: selectedWebsiteId,
         fromDate: dateRange.from.toISOString(),
         toDate: dateRange.to.toISOString(),
+        realtime: 'true',
       });
 
-      const response = await fetch(`/api/metrics?${params}`);
+      const response = await fetch(`/api/enhanced-metrics?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch metrics');
       }
@@ -185,8 +202,8 @@ export default function DashboardPage() {
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <MetricCard
-            title="Total Visitors"
-            value={metrics?.totalVisitors || 0}
+            title="Total Sessions"
+            value={metrics?.totalSessions || 0}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -206,8 +223,8 @@ export default function DashboardPage() {
             loading={loading || refreshing}
           />
           <MetricCard
-            title="Active Time"
-            value={`${metrics?.totalActiveTime || 0}m`}
+            title="Avg. Session Duration"
+            value={`${Math.round((metrics?.avgSessionDuration || 0) / 60)}m`}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -237,11 +254,55 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Placeholder for Charts/Graphs */}
-        <div className="bg-white rounded-lg shadow p-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Analytics Overview</h3>
+        {/* Analytics Visualizations */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Device Breakdown */}
+          <BreakdownChart
+            data={metrics?.deviceBreakdown.map(d => ({ name: d.device, value: d.count })) || []}
+            title="Device Types"
+          />
+
+          {/* Browser Breakdown */}
+          <BreakdownChart
+            data={metrics?.browserBreakdown.map(d => ({ name: d.browser, value: d.count })) || []}
+            title="Browser Usage"
+          />
+
+          {/* OS Breakdown */}
+          <BreakdownChart
+            data={metrics?.osBreakdown.map(d => ({ name: d.os, value: d.count })) || []}
+            title="Operating Systems"
+          />
+
+          {/* Referral Sources */}
+          <ReferralSources referrers={metrics?.topReferrers || []} />
+        </div>
+
+        {/* Geographic Data */}
+        <div className="mb-8">
+          <GeographicData countries={metrics?.countryBreakdown || []} />
+        </div>
+
+        {/* Top Pages and Referrers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <TopItemsChart
+            data={metrics?.topPages.map(p => ({ name: p.path, value: p.views })) || []}
+            title="Top Pages"
+            color="#3B82F6"
+          />
+
+          <TopItemsChart
+            data={metrics?.topReferrers.map(r => ({ name: r.referrer || 'Direct', value: r.count })) || []}
+            title="Top Referrers"
+            color="#10B981"
+          />
+        </div>
+
+        {/* Time Series Chart - Placeholder for now */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Trends Over Time</h3>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Charts and graphs will be implemented here</p>
+            <p className="text-gray-500">Time series charts will be implemented with historical data aggregation</p>
           </div>
         </div>
       </main>
