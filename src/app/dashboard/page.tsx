@@ -47,6 +47,13 @@ export default function DashboardPage() {
   const [websites, setWebsites] = useState<Website[]>([]);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<EnhancedMetrics | null>(null);
+  const [timeSeriesData, setTimeSeriesData] = useState<Array<{
+    date: string;
+    sessions?: number;
+    pageViews?: number;
+    visitors?: number;
+    bounceRate?: number;
+  }>>([]);
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
     to: new Date(),
@@ -103,12 +110,20 @@ export default function DashboardPage() {
         realtime: 'true',
       });
 
-      const response = await fetch(`/api/enhanced-metrics?${params}`);
-      if (!response.ok) {
+      // Fetch enhanced metrics
+      const metricsResponse = await fetch(`/api/enhanced-metrics?${params}`);
+      if (!metricsResponse.ok) {
         throw new Error('Failed to fetch metrics');
       }
-      const data = await response.json();
-      setMetrics(data.metrics);
+      const metricsData = await metricsResponse.json();
+      setMetrics(metricsData.metrics);
+
+      // Fetch time series data
+      const timeSeriesResponse = await fetch(`/api/time-series?${params}`);
+      if (timeSeriesResponse.ok) {
+        const timeSeriesData = await timeSeriesResponse.json();
+        setTimeSeriesData(timeSeriesData.timeSeriesData);
+      }
     } catch (error) {
       console.error('Error loading metrics:', error);
     } finally {
@@ -131,15 +146,26 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Navigation */}
-      <nav className="bg-white shadow">
+      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-600">Analytics</h1>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Analytics Dashboard
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Live Data</span>
+              </div>
               <UserNav />
             </div>
           </div>
@@ -147,63 +173,92 @@ export default function DashboardPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-2xl p-8 text-white shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Welcome back! 👋</h1>
+                <p className="text-blue-100 text-lg">
+                  Here's what's happening with your website analytics today.
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <div className="flex items-center space-x-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{metrics?.liveUsers || 0}</div>
+                    <div className="text-sm text-blue-200">Live Users</div>
+                  </div>
+                  <div className="w-px h-12 bg-blue-400"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{metrics?.totalSessions || 0}</div>
+                    <div className="text-sm text-blue-200">Sessions Today</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Header Controls */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <WebsiteSelector
+                    websites={websites}
+                    selectedWebsiteId={selectedWebsiteId}
+                    onWebsiteChange={setSelectedWebsiteId}
+                    loading={loading}
+                  />
+                  <button
+                    onClick={() => router.push('/dashboard/add-website')}
+                    className="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Website
+                  </button>
+                </div>
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  loading={loading}
+                />
+              </div>
               <div className="flex items-center gap-4">
-                <WebsiteSelector
-                  websites={websites}
-                  selectedWebsiteId={selectedWebsiteId}
-                  onWebsiteChange={setSelectedWebsiteId}
+                <TimePeriodToggle
+                  period={timePeriod}
+                  onPeriodChange={setTimePeriod}
                   loading={loading}
                 />
                 <button
-                  onClick={() => router.push('/dashboard/add-website')}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <svg
+                    className={`w-5 h-5 mr-2 ${refreshing ? 'animate-spin' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Add Website
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
               </div>
-              <DateRangePicker
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-                loading={loading}
-              />
-            </div>
-            <div className="flex items-center gap-4">
-              <TimePeriodToggle
-                period={timePeriod}
-                onPeriodChange={setTimePeriod}
-                loading={loading}
-              />
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <svg
-                  className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {refreshing ? 'Refreshing...' : 'Refresh'}
-              </button>
             </div>
           </div>
         </div>
 
         {/* Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <MetricCard
             title="Total Sessions"
             value={metrics?.totalSessions || 0}
+            gradient="from-blue-500 to-cyan-500"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -214,6 +269,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Page Views"
             value={metrics?.totalPageViews || 0}
+            gradient="from-green-500 to-emerald-500"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -225,6 +281,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Avg. Session Duration"
             value={`${Math.round((metrics?.avgSessionDuration || 0) / 60)}m`}
+            gradient="from-purple-500 to-pink-500"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -235,6 +292,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Avg. Time on Page"
             value={`${metrics?.avgTimeOnPage || 0}s`}
+            gradient="from-orange-500 to-red-500"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -245,6 +303,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Live Users"
             value={metrics?.liveUsers || 0}
+            gradient="from-indigo-500 to-purple-600"
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -298,13 +357,12 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Time Series Chart - Placeholder for now */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Trends Over Time</h3>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Time series charts will be implemented with historical data aggregation</p>
-          </div>
-        </div>
+        {/* Time Series Chart */}
+        <TimeSeriesChart
+          data={timeSeriesData}
+          title="Trends Over Time"
+          metrics={['sessions', 'pageViews', 'visitors']}
+        />
       </main>
     </div>
   );

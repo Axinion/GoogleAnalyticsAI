@@ -28,8 +28,8 @@ export function BreakdownChart({ data, title, colors = DEFAULT_COLORS }: Breakdo
   }));
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{title}</h3>
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-white/20 group">
+      <h3 className="text-lg font-bold text-gray-900 mb-6 group-hover:text-blue-600 transition-colors duration-300">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -42,13 +42,27 @@ export function BreakdownChart({ data, title, colors = DEFAULT_COLORS }: Breakdo
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"
+              animationBegin={0}
+              animationDuration={800}
             >
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => [value, 'Count']} />
-            <Legend />
+            <Tooltip
+              formatter={(value) => [value, 'Count']}
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: 'none',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                backdropFilter: 'blur(10px)'
+              }}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: '20px' }}
+              iconType="circle"
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>

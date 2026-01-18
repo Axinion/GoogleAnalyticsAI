@@ -33,8 +33,8 @@ export function TimeSeriesChart({
   }));
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{title}</h3>
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-white/20 group">
+      <h3 className="text-lg font-bold text-gray-900 mb-6 group-hover:text-blue-600 transition-colors duration-300">{title}</h3>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -46,21 +46,40 @@ export function TimeSeriesChart({
               bottom: 5,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12, fill: '#6b7280' }}
+              axisLine={{ stroke: '#e5e7eb' }}
+            />
+            <YAxis
+              tick={{ fontSize: 12, fill: '#6b7280' }}
+              axisLine={{ stroke: '#e5e7eb' }}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: 'none',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                backdropFilter: 'blur(10px)'
+              }}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: '20px' }}
+            />
             {metrics.map(metric => (
               <Line
                 key={metric}
                 type="monotone"
                 dataKey={metric}
                 stroke={METRIC_CONFIG[metric].color}
-                strokeWidth={2}
+                strokeWidth={3}
                 name={METRIC_CONFIG[metric].label}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 4, fill: METRIC_CONFIG[metric].color }}
+                activeDot={{ r: 6, fill: METRIC_CONFIG[metric].color, stroke: '#fff', strokeWidth: 2 }}
+                animationBegin={0}
+                animationDuration={1500}
               />
             ))}
           </LineChart>
