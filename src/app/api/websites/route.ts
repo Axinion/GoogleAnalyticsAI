@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { getWebsitesByUserId, createWebsite } from '@/lib/db/queries';
+import { getWebsitesByUserId, createWebsite, canUserCreateWebsite } from '@/lib/db/queries';
 import { syncUserWithDatabase } from '@/lib/auth';
 import { randomUUID } from 'crypto';
 
@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
 
     if (!name || !domain) {
       return NextResponse.json({ error: 'Name and domain are required' }, { status: 400 });
+    }
+
+    // Check billing limits
+    const canCreate = await canUserCreateWebsite(dbUser.id);
+    if (!canCreate) {
+      return NextResponse.json({
+        error: 'Website limit reached. Please upgrade your plan to add more websites.',
+        upgradeRequired: true
+      }, { status: 403 });
     }
 
     // Generate unique tracking ID

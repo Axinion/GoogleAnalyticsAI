@@ -29,6 +29,11 @@ export const plans = pgTable("plans", {
   name: varchar("name", { length: 100 }).notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   features: json("features").$type<string[]>().notNull(),
+  maxWebsites: integer("max_websites").notNull(),
+  maxSessions: integer("max_sessions").notNull(), // per month
+  stripePriceId: varchar("stripe_price_id", { length: 100 }),
+  clerkPlanId: varchar("clerk_plan_id", { length: 100 }),
+  isPopular: boolean("is_popular").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -41,12 +46,30 @@ export const subscriptions = pgTable("subscriptions", {
   planId: serial("plan_id")
     .notNull()
     .references(() => plans.id),
-  status: varchar("status", { length: 50 }).notNull().default("active"), // active, cancelled, expired
+  clerkSubscriptionId: varchar("clerk_subscription_id", { length: 100 }),
+  status: varchar("status", { length: 50 }).notNull().default("active"), // active, cancelled, expired, past_due
   startDate: timestamp("start_date").defaultNow().notNull(),
   endDate: timestamp("end_date"),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Usage tracking for billing limits
+export const usage = pgTable("usage", {
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  period: varchar("period", { length: 7 }).notNull(), // YYYY-MM format
+  websitesCount: integer("websites_count").default(0).notNull(),
+  sessionsCount: integer("sessions_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  pk: primaryKey(table.userId, table.period),
+}));
 
 // Websites/Properties
 export const websites = pgTable("websites", {
@@ -232,6 +255,13 @@ export const analyticsSummaryRelations = relations(analyticsSummary, ({ one }) =
   website: one(websites, {
     fields: [analyticsSummary.websiteId],
     references: [websites.id],
+  }),
+}));
+
+export const usageRelations = relations(usage, ({ one }) => ({
+  user: one(users, {
+    fields: [usage.userId],
+    references: [users.id],
   }),
 }));
 

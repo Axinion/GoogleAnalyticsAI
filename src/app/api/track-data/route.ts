@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWebsiteByTrackingId, createSession, createPageView, getSessionBySessionId, updateSession, createEvent } from '@/lib/db/queries';
+import { getWebsiteByTrackingId, createSession, createPageView, getSessionBySessionId, updateSession, createEvent, canUserTrackSession, incrementUserUsage } from '@/lib/db/queries';
 
 // Event handler functions
 async function handlePageView(data: any, website: any, request: NextRequest) {
@@ -34,6 +34,17 @@ async function handlePageView(data: any, website: any, request: NextRequest) {
   let session = await getSessionBySessionId(sessionId);
 
   if (!session) {
+    // Check billing limits before creating session
+    const canTrack = await canUserTrackSession(website.userId);
+    if (!canTrack) {
+      console.log(`Session limit reached for user ${website.userId}`);
+      return; // Silently ignore - don't break user experience
+    }
+
+    // Increment usage counter
+    const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+    await incrementUserUsage(website.userId, period, 1);
+
     // Create new session
     const sessionData = await createSession({
       websiteId: website.id,

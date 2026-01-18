@@ -22,6 +22,20 @@
       "when": 1768674926697,
       "tag": "0002_conscious_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768751270005,
+      "tag": "0003_parallel_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1768751345559,
+      "tag": "0004_nifty_dorian_gray",
+      "breakpoints": true
     }
   ]
 }

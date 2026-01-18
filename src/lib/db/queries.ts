@@ -1,5 +1,5 @@
 import { db } from "./index";
-import { users, websites, sessions, pageViews, subscriptions, transactions, analyticsSummary, events } from "./schema";
+import { users, websites, sessions, pageViews, subscriptions, transactions, analyticsSummary, events, plans, usage } from "./schema";
 import { eq, and, gte, lte, sql, count, sum, avg, desc } from "drizzle-orm";
 import { getAggregatedMetrics } from '@/lib/analytics/aggregation';
 
@@ -18,6 +18,108 @@ export async function getUserByEmail(email: string) {
 
 export async function createUser(data: typeof users.$inferInsert) {
   return db.insert(users).values(data).returning();
+}
+
+// Plan queries
+export async function getAllPlans() {
+  return db.query.plans.findMany({
+    orderBy: (plans, { asc }) => asc(plans.price),
+  });
+}
+
+export async function getPlanById(planId: number) {
+  return db.query.plans.findFirst({
+    where: eq(plans.id, planId),
+  });
+}
+
+export async function createPlan(data: typeof plans.$inferInsert) {
+  return db.insert(plans).values(data).returning();
+}
+
+// Subscription queries
+export async function getUserSubscription(userId: string) {
+  return db.query.subscriptions.findFirst({
+    where: and(
+      eq(subscriptions.userId, userId),
+      eq(subscriptions.status, 'active')
+    ),
+    with: {
+      plan: true,
+    },
+  });
+}
+
+// Usage queries
+export async function getUserUsage(userId: string, period: string) {
+  return db.query.usage.findFirst({
+    where: and(
+      eq(usage.userId, userId),
+      eq(usage.period, period)
+    ),
+  });
+}
+
+export async function updateUserUsage(userId: string, period: string, websitesCount: number, sessionsCount: number) {
+  return db.insert(usage).values({
+    userId,
+    period,
+    websitesCount,
+    sessionsCount,
+  }).onConflictDoUpdate({
+    target: [usage.userId, usage.period],
+    set: {
+      websitesCount,
+      sessionsCount,
+      updatedAt: new Date(),
+    },
+  }).returning();
+}
+
+export async function incrementUserUsage(userId: string, period: string, sessionsIncrement: number = 0) {
+  const currentUsage = await getUserUsage(userId, period);
+  
+  if (currentUsage) {
+    return db.update(usage)
+      .set({
+        sessionsCount: currentUsage.sessionsCount + sessionsIncrement,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(usage.userId, userId), eq(usage.period, period)))
+      .returning();
+  } else {
+    // Get current websites count for the user
+    const websitesCount = await db.$count(websites, eq(websites.userId, userId));
+    return updateUserUsage(userId, period, websitesCount, sessionsIncrement);
+  }
+}
+
+// Billing utility functions
+export async function canUserCreateWebsite(userId: string): Promise<boolean> {
+  const subscription = await getUserSubscription(userId);
+  
+  if (!subscription) {
+    // Free plan allows 1 website
+    const websiteCount = await db.$count(websites, eq(websites.userId, userId));
+    return websiteCount < 1;
+  }
+
+  const websiteCount = await db.$count(websites, eq(websites.userId, userId));
+  return websiteCount < subscription.plan.maxWebsites;
+}
+
+export async function canUserTrackSession(userId: string): Promise<boolean> {
+  const subscription = await getUserSubscription(userId);
+  const period = new Date().toISOString().slice(0, 7); // YYYY-MM
+  
+  if (!subscription) {
+    // Free plan allows limited sessions (let's say 1000 for now)
+    const usage = await getUserUsage(userId, period);
+    return !usage || usage.sessionsCount < 1000;
+  }
+
+  const usage = await getUserUsage(userId, period);
+  return !usage || usage.sessionsCount < subscription.plan.maxSessions;
 }
 
 // Website queries
