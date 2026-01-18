@@ -48,6 +48,14 @@ export async function createWebsite(data: typeof websites.$inferInsert) {
   return db.insert(websites).values(data).returning();
 }
 
+export async function updateWebsite(websiteId: string, data: Partial<typeof websites.$inferInsert>) {
+  return db.update(websites).set(data).where(eq(websites.id, websiteId)).returning();
+}
+
+export async function deleteWebsite(websiteId: string) {
+  return db.delete(websites).where(eq(websites.id, websiteId)).returning();
+}
+
 // Session queries
 export async function createSession(data: any) {
   // Filter out fields that don't exist in the schema
